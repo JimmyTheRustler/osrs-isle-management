@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.commands import Option
 from datetime import datetime, timedelta
 import asyncio
+from collections import defaultdict
 
 class CompileClanChat(commands.Cog):
     def __init__(self, bot):
@@ -44,10 +45,10 @@ class CompileClanChat(commands.Cog):
                 await ctx.followup.send("Error: Start date must be before end date", ephemeral=True)
                 return
 
-            total_lines = 0
             total_messages = 0
             message_count_processed = 0 # Counter for debugging progress
             loop_finished_normally = False # Flag to check loop exit
+            user_message_counts = defaultdict(int) # Dictionary to track user message counts
 
             print(f"Fetching messages from #{channel.name} between {start} and {end} to count lines (using async for)")
             async for message in channel.history(limit=None, after=start, before=end):
@@ -59,24 +60,50 @@ class CompileClanChat(commands.Cog):
                 
                 # Include bot messages, but only count lines if there's text content
                 if message.content:
-                    total_lines += message.content.count('\n') + 1
-                    total_messages += 1 # Counts messages *with content*
+                    total_messages += 1 # Counts messages with content
+                    # Extract username from message content if it matches the template
+                    if "**" in message.content and "**:" in message.content:
+                        username = message.content.split("**")[1].split(":**")[0]
+                        user_message_counts[username] += 1
             
             loop_finished_normally = True # Set flag if loop completes
             print(f"Loop finished normally: {loop_finished_normally}")
-            print(f"Finished processing. Found {total_messages} messages (including bots) with text content, containing {total_lines} lines.")
+            print(f"Finished processing. Found {total_messages} messages (including bots) with text content.")
 
             if total_messages == 0:
                 await ctx.followup.send(f"No messages (including bots) with text content found in #{channel.name} between {start_date} and {end_date}.", ephemeral=True)
                 return
 
             # Prepare the results message
-            result_message = f"**Total Lines in #{channel.name} ({start_date} to {end_date})**\n(Including Bot Messages)\n\n"
-            result_message += f"Total Lines: {total_lines}\n"
-            result_message += f"Total Messages Checked with Content: {total_messages}"
-
-            # Send the results
-            await ctx.followup.send(result_message, ephemeral=True)
+            result_message = f"**Message Statistics for #{channel.name} ({start_date} to {end_date})**\n\n"
+            result_message += f"Total Messages Checked with Content: {total_messages}\n\n"
+            result_message += "**User Message Counts:**\n"
+            
+            # Sort users by message count in descending order
+            sorted_users = sorted(user_message_counts.items(), key=lambda x: x[1], reverse=True)
+            
+            # Split the message into chunks of 2000 characters or less
+            current_chunk = result_message
+            pts = 0
+            for username, count in sorted_users:
+                if int(count) > 400:
+                    pts = 100
+                elif int(count) > 200:
+                    pts = 50
+                elif int(count) > 100:
+                    pts = 25
+                user_line = f"{username}: {count} messages, awarding {pts}xp\n"
+                # If adding this line would exceed 2000 characters, send current chunk and start new one
+                if len(current_chunk) + len(user_line) > 1980: #2000 is the char limit
+                    await ctx.followup.send(current_chunk, ephemeral=True)
+                    current_chunk = user_line
+                else:
+                    current_chunk += user_line
+                pts = 0
+            
+            # Send any remaining content
+            if current_chunk:
+                await ctx.followup.send(current_chunk, ephemeral=True)
 
         except ValueError:
             await ctx.followup.send("Error: Invalid date format. Please use YYYY-MM-DD", ephemeral=True)
