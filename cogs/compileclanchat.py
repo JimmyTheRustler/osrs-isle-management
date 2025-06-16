@@ -12,14 +12,14 @@ class CompileClanChat(commands.Cog):
         self.bot = bot
         print("CompileClanChat cog loaded")
 
-    def write_to_output_file(self, sorted_users):
+    def write_to_output_file(self, sorted_users, date):
         """
         Write sorted user data to a text file with current month-year format.
         If a file for the current month-year exists, aggregate message counts and XP for existing users.
         """
-        # Get current month and year
-        current_date = datetime.now()
-        file_name = f"output-{current_date.strftime('%m-%y')}.txt"
+        # Format the passed date to show month and year
+        current_date = date.strftime('%m-%Y')
+        file_name = f"output-{current_date}.txt"
         
         # Check if file exists
         file_exists = os.path.exists(file_name)
@@ -73,7 +73,7 @@ class CompileClanChat(commands.Cog):
             # Write the merged data back to file
             with open(file_name, 'w', encoding='utf-8') as f:
                 # Write header
-                f.write(f"Clan Chat Statistics - {current_date.strftime('%B %Y')}\n")
+                f.write(f"Clan Chat Statistics - {current_date}\n")
                 f.write("=" * 50 + "\n\n")
                 
                 # Write each user's data
@@ -103,20 +103,31 @@ class CompileClanChat(commands.Cog):
         9. username has been defeated
         10. username has defeated
         11. username has deposited [number] coins into the coffer
+        12. username has completed the [difficulty] [area] diary
+        13. username received special loot from a raid
+        14. username has reached the highest possible total level of 2277
+        15. username received a clue item
+        16. username has unlocked the [tier] tier of rewards from Combat Achievements
+        17. username has reached a total level of [number]
+        18. username has been invited into the clan by
+        19. username has opened a loot key worth [number]
         Returns the username if found, None otherwise.
         """
 
         # Strip content between < and > symbols
         content = re.sub(r'<[^>]+>', '', content)
 
+        # Define username pattern that allows letters, numbers, spaces, and common special characters
+        username_pattern = r'[A-Za-z0-9\s\-_]+'
+
         # Pattern for **username**: format
-        pattern1 = r"\s*\*\*(.*?)\*\*"
+        pattern1 = rf"\s*\*\*({username_pattern})\*\*"
         # Pattern for username has achieved a new format
-        pattern2 = r"\s*(.*?)\s+has\s+achieved\s+a\s+new"
+        pattern2 = rf"\s*({username_pattern})\s+has\s+achieved\s+a\s+new.*"
         # Pattern for username received a drop format
-        pattern3 = r"\s*(.*?)\s+received\s+a\s+drop"
+        pattern3 = rf"\s*({username_pattern})\s+received\s+a\s+drop.*"
         # Pattern for username received a new collection log item format
-        pattern4 = r"\s*(.*?)\s+received\s+a\s+new\s+collection\s+log\s+item"
+        pattern4 = rf"\s*({username_pattern})\s+received\s+a\s+new\s+collection\s+log\s+item.*"
         # Pattern for username has reached [skill] level format
         skills = [
             "Sailing", "Hunter", "Construction", "Farming", "Slayer", "Runecraft",
@@ -126,21 +137,47 @@ class CompileClanChat(commands.Cog):
             "combat", "total"
         ]
         skills_pattern = "|".join(skills)
-        pattern5 = rf"\s*(.*?)\s+has\s+reached\s+({skills_pattern})\s+level"
+        pattern5 = rf"\s*({username_pattern})\s+has\s+reached\s+({skills_pattern})\s+level.*"
         # Pattern for username has reached [number] XP in [skill] format
-        pattern6 = rf"\s*(.*?)\s+has\s+reached\s+([0-9,]+)\s+XP\s+in\s+({skills_pattern})"
+        pattern6 = rf"\s*({username_pattern})\s+has\s+reached\s+([0-9,]+)\s+XP\s+in\s+({skills_pattern}).*"
         # Pattern for username has completed a [difficulty] combat task format
         difficulties = ["easy", "medium", "hard", "elite", "master", "grandmaster"]
         difficulties_pattern = "|".join(difficulties)
-        pattern7 = rf"\s*(.*?)\s+has\s+completed\s+a\s+({difficulties_pattern})\s+combat\s+task"
+        pattern7 = rf"\s*({username_pattern})\s+has\s+completed\s+a\s+({difficulties_pattern})\s+combat\s+task.*"
         # Pattern for username has a funny feeling format
-        pattern8 = r"\s*(.*?)\s+has\s+a\s+funny\s+feeling"
+        pattern8 = rf"\s*({username_pattern})\s+has\s+a\s+funny\s+feeling.*"
         # Pattern for username has been defeated format
-        pattern9 = r"\s*(.*?)\s+has\s+been\s+defeated"
+        pattern9 = rf"\s*({username_pattern})\s+has\s+been\s+defeated.*"
         # Pattern for username has defeated format
-        pattern10 = r"\s*(.*?)\s+has\s+defeated"
+        pattern10 = rf"\s*({username_pattern})\s+has\s+defeated.*"
         # Pattern for username has deposited [number] coins into the coffer format
-        pattern11 = r"\s*(.*?)\s+has\s+deposited\s+[0-9,]+\s+coins\s+into\s+the\s+coffer"
+        pattern11 = rf"\s*({username_pattern})\s+has\s+deposited\s+[0-9,]+\s+coins\s+into\s+the\s+coffer.*"
+        # Pattern for username has completed the [difficulty] [area] diary format
+        difficulties = ["Easy", "Medium", "Hard", "Elite"]
+        areas = [
+            "Ardougne", "Desert", "Falador", "Fremennik", "Kandarin",
+            "Kourend & Kebos", "Lumbridge & Draynor", "Morytania",
+            "Varrock", "Western Provinces", "Wilderness"
+        ]
+        difficulties_pattern = "|".join(difficulties)
+        areas_pattern = "|".join(areas)
+        pattern12 = rf"\s*({username_pattern})\s+has\s+completed\s+the\s+({difficulties_pattern})\s+({areas_pattern})\s+diary.*"
+        # Pattern for username received special loot from a raid format
+        pattern13 = rf"\s*({username_pattern})\s+received\s+special\s+loot\s+from\s+a\s+raid.*"
+        # Pattern for username has reached the highest possible total level format
+        pattern14 = rf"\s*({username_pattern})\s+has\s+reached\s+the\s+highest\s+possible\s+total\s+level\s+of\s+2277.*"
+        # Pattern for username received a clue item format
+        pattern15 = rf"\s*({username_pattern})\s+received\s+a\s+clue\s+item.*"
+        # Pattern for username has unlocked the [tier] tier of rewards from Combat Achievements format
+        combat_tiers = ["Easy", "Medium", "Hard", "Elite", "Master", "Grandmaster"]
+        combat_tiers_pattern = "|".join(combat_tiers)
+        pattern16 = rf"\s*({username_pattern})\s+has\s+unlocked\s+the\s+({combat_tiers_pattern})\s+tier\s+of\s+rewards\s+from\s+Combat\s+Achievements.*"
+        # Pattern for username has reached a total level of [number] format
+        pattern17 = rf"\s*({username_pattern})\s+has\s+reached\s+a\s+total\s+level\s+of\s+[0-9]+.*"
+        # Pattern for username has been invited into the clan by format
+        pattern18 = rf"\s*({username_pattern})\s+has\s+been\s+invited\s+into\s+the\s+clan\s+by.*"
+        # Pattern for username has opened a loot key worth [number] format
+        pattern19 = rf"\s*({username_pattern})\s+has\s+opened\s+a\s+loot\s+key\s+worth\s+[0-9,]+.*"
         
         # Try all patterns
         match1 = re.search(pattern1, content)
@@ -154,6 +191,14 @@ class CompileClanChat(commands.Cog):
         match9 = re.search(pattern9, content)
         match10 = re.search(pattern10, content)
         match11 = re.search(pattern11, content)
+        match12 = re.search(pattern12, content)
+        match13 = re.search(pattern13, content)
+        match14 = re.search(pattern14, content)
+        match15 = re.search(pattern15, content)
+        match16 = re.search(pattern16, content)
+        match17 = re.search(pattern17, content)
+        match18 = re.search(pattern18, content)
+        match19 = re.search(pattern19, content)
         
         if match1:
             return match1.group(1)
@@ -177,8 +222,24 @@ class CompileClanChat(commands.Cog):
             return match10.group(1)
         elif match11:
             return match11.group(1)
+        elif match12:
+            return match12.group(1)
+        elif match13:
+            return match13.group(1)
+        elif match14:
+            return match14.group(1)
+        elif match15:
+            return match15.group(1)
+        elif match16:
+            return match16.group(1)
+        elif match17:
+            return match17.group(1)
+        elif match18:
+            return match18.group(1)
+        elif match19:
+            return match19.group(1)
         else:
-            print("unknown format: " + content)
+            #print("unknown format: " + content)
             return None
 
 
@@ -258,7 +319,7 @@ class CompileClanChat(commands.Cog):
             sorted_users = sorted(user_message_counts.items(), key=lambda x: x[1], reverse=True)
             
             # Write to output file
-            success, result = self.write_to_output_file(sorted_users)
+            success, result = self.write_to_output_file(sorted_users, start)
             if success:
                 result_message += f"\nResults have been written to {result}\n\n"
             else:
