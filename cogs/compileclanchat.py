@@ -41,30 +41,40 @@ class CompileClanChat(commands.Cog):
                             existing_data[username] = count
                             existing_xp[username] = xp
 
-            # Calculate XP for new messages
-            new_xp = {}
-            for username, count in sorted_users:
-                pts = 0
-                if int(count) > 400:
-                    pts = 100
-                elif int(count) > 200:
-                    pts = 50
-                elif int(count) > 100:
-                    pts = 25
-                new_xp[username] = pts
 
             # Merge message counts and XP
             merged_data = {}
             for username, count in sorted_users:
                 if username in existing_data:
+                    count2 = existing_data[username] + count
+                    xp2 = 0
+                    if int(count2) > 400:
+                        xp2 = 100
+                    elif int(count2) > 200:
+                        xp2 = 50
+                    elif int(count2) > 100:
+                        xp2 = 25
+                    else:
+                        xp2 = 0
+
                     merged_data[username] = {
-                        'count': existing_data[username] + count,
-                        'xp': existing_xp[username] + new_xp[username]
+                        'count': count2,
+                        'xp': xp2
                     }
                 else:
+                    xp2 = 0
+                    if int(count) > 400:
+                        xp2 = 100
+                    elif int(count) > 200:
+                        xp2 = 50
+                    elif int(count) > 100:
+                        xp2 = 25
+                    else:
+                        xp2 = 0
+                        
                     merged_data[username] = {
                         'count': count,
-                        'xp': new_xp[username]
+                        'xp': xp2
                     }
 
             # Sort the merged data by message count
